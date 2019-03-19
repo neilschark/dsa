@@ -2,6 +2,8 @@ from random import randint
 import json
 import os
 
+from test import visualize
+
 all_files = os.listdir("./")
 
 heroes = []
@@ -106,8 +108,8 @@ talents = {"klettern": ["mut", "gewandheit", "koerperkraft"], "koerperbeherrschu
 
 # for hero in heroes:
     # roll_dices(input_attribut, input_modificator, hero)
-
-for i in range(0, 1000000):
+number_of_tests = 100000
+for i in range(0, number_of_tests):
     roll_dices("klettern", 0, held1)
 
 print("Anzahl erfolge: " + str(number_of_successes))
@@ -120,3 +122,7 @@ print("Anzahl besonders kritischer erfolge: " + str(number_of_really_critical_su
 # print("Kritischer Misserfolg + Misserfolg: " + str(number_of_critical_failures + number_of_failures))
 
 print("+++++++++++++++++++++++++")
+results = [number_of_really_critical_successes, number_of_critical_successes,
+           number_of_successes, number_of_failures,
+           number_of_critical_failures, number_of_really_critical_failures]
+visualize(number_of_tests, results)
