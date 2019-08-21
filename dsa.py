@@ -14,6 +14,20 @@ version_of_program = 1.0
 
 debug_mode = False
 
+class dice_roll_result:
+    def __init__(self):
+        self.name = ""
+        self.talent = ""
+        self.type = ""
+        self.quality_level = ""
+        self.talent_value = ""
+        self.remaining_points = ""
+        self.dice_values = ""
+        self.modification = ""
+        self.attribute_names = ""
+        self.attribute_values = ""
+        self.compensation_points = ""
+
 
 class Hero:
     def __init__(self):
@@ -50,12 +64,11 @@ class Hero:
                       "attribute_values": value_attributes,
                       "compensation_points": compensation_points}
 
-        global number_of_successes
-        global number_of_failures
-        global number_of_critical_successes
-        global number_of_critical_failures
-        global number_of_really_critical_failures
-        global number_of_really_critical_successes
+        return_element = dice_roll_result()
+        return_element.modification = modification
+        return_element.attribute_names = relevant_attributes
+        return_element.attribute_values = value_attributes
+        return_element.compensation_points = compensation_points
 
         rolls = []
 
@@ -64,52 +77,48 @@ class Hero:
             rolls.append(roll)
 
         if rolls.count(1) == 3:
-            number_of_really_critical_successes += 1
             self.number_of_really_critical_successes += 1
-            return_dic["name"] = self.name
-            return_dic["talent"] = talent_input
-            return_dic["type"] = "really_critical_success"
-            return_dic["quality_level"] = str(self.calc_quality(compensation_points_max * 2))
-            return_dic["talent_value"] = str(compensation_points_max)
-            return_dic["remaining_points"] = str(compensation_points)
-            return_dic["dice_values"] = rolls
-            return return_dic
+            return_element.name = self.name
+            return_element.talent = talent_input
+            return_element.type = "really_critical_success"
+            return_element.quality_level = str(self.calc_quality(compensation_points_max * 2))
+            return_element.talent_value = str(compensation_points_max)
+            return_element.remaining_points = str(compensation_points)
+            return_element.dice_values = rolls
+            return return_element
 
         if rolls.count(1) == 2:
-            number_of_critical_successes += 1
             self.number_of_critical_successes += 1
-            return_dic["name"] = self.name
-            return_dic["talent"] = talent_input
-            return_dic["type"] = "critical_success"
-            return_dic["quality_level"] = str(self.calc_quality(compensation_points_max * 2))
-            return_dic["talent_value"] = str(compensation_points_max)
-            return_dic["remaining_points"] = str(compensation_points)
-            return_dic["dice_values"] = rolls
-            return return_dic
+            return_element.name = self.name
+            return_element.talent = talent_input
+            return_element.type = "critical_success"
+            return_element.quality_level = str(self.calc_quality(compensation_points_max * 2))
+            return_element.talent_value = str(compensation_points_max)
+            return_element.remaining_points = str(compensation_points)
+            return_element.dice_values = rolls
+            return return_element
 
         if rolls.count(20) == 3:
-            number_of_really_critical_failures += 1
             self.number_of_really_critical_failures += 1
-            return_dic["name"] = self.name
-            return_dic["talent"] = talent_input
-            return_dic["type"] = "really_critical_failure"
-            return_dic["quality_level"] = 0
-            return_dic["talent_value"] = str(compensation_points_max)
-            return_dic["remaining_points"] = str(compensation_points)
-            return_dic["dice_values"] = rolls
-            return return_dic
+            return_element.name = self.name
+            return_element.talent = talent_input
+            return_element.type = "really_critical_failure"
+            return_element.quality_level = 0
+            return_element.talent_value = str(compensation_points_max)
+            return_element.remaining_points = str(compensation_points)
+            return_element.dice_values = rolls
+            return return_element
 
         if rolls.count(20) == 2:
-            number_of_critical_failures += 1
             self.number_of_critical_failures += 1
-            return_dic["name"] = self.name
-            return_dic["talent"] = talent_input
-            return_dic["type"] = "critical_failure"
-            return_dic["quality_level"] = 0
-            return_dic["talent_value"] = str(compensation_points_max)
-            return_dic["remaining_points"] = str(compensation_points)
-            return_dic["dice_values"] = rolls
-            return return_dic
+            return_element.name = self.name
+            return_element.talent = talent_input
+            return_element.type = "critical_failure"
+            return_element.quality_level = 0
+            return_element.talent_value = str(compensation_points_max)
+            return_element.remaining_points = str(compensation_points)
+            return_element.dice_values = rolls
+            return return_element
 
         for x, roll in enumerate(rolls):
             if roll > value_attributes[x]:
@@ -118,17 +127,16 @@ class Hero:
                 else:
                     number_of_failures += 1
                     self.number_of_failures += 1
-                    return_dic["name"] = self.name
-                    return_dic["talent"] = talent_input
-                    return_dic["type"] = "failure"
-                    return_dic["quality_level"] = 0
-                    return_dic["talent_value"] = str(compensation_points_max)
-                    return_dic["remaining_points"] = 0
-                    return_dic["dice_values"] = rolls
-                    return return_dic
+                    return_element.name = self.name
+                    return_element.talent = talent_input
+                    return_element.type = "failure"
+                    return_element.quality_level = 0
+                    return_element.talent_value = str(compensation_points_max)
+                    return_element.remaining_points = 0
+                    return_element.dice_values = rolls
+                    return return_element
             #x += 1
 
-        number_of_successes += 1
         self.number_of_successes += 1
         return_dic["name"] = self.name
         return_dic["talent"] = talent_input
