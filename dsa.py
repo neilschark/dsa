@@ -1,96 +1,251 @@
+#!/usr/bin/env python3
+#####################################################################
+# Authors: Neil Schark, Michael Book                                #
+# Version: 1.0                                                      #
+# Read the README for further instructions, like how to use this    #
+# program.                                                          #
+#####################################################################
 from random import randint
 import json
 import os
+import csv
 
-from test import visualize
+version_of_program = 1.0
 
-all_files = os.listdir("./")
-
-heroes = []
-
-for file in all_files:
-    if file.endswith(".json"):
-        input_file = open(file, "r")
-        heroes.append(json.loads(input_file.read()))  # read line, convert it to dictionary and append it to list
-        input_file.close()
+debug_mode = False
 
 
-def roll_dices(talent, modificator, current_hero):
-    print("*************************************")
-    print("Es würfelt: " + str(current_hero["name"]))
-    relevant_attributes = talents[talent]
-    # print(modificator)
-    compensation_points = current_hero[talent]
-    # print(compensation_points)
-    value_attributes = []
-    value_attributes.append(current_hero[relevant_attributes[0]] + modificator)
-    value_attributes.append(current_hero[relevant_attributes[1]] + modificator)
-    value_attributes.append(current_hero[relevant_attributes[2]] + modificator)
-    print("Wert inkl. Multiplikator für " + str(relevant_attributes[0]) + ": " + str(value_attributes[0]))
-    print("Wert inkl. Multiplikator für " + str(relevant_attributes[1]) + ": " + str(value_attributes[1]))
-    print("Wert inkl. Multiplikator für " + str(relevant_attributes[2]) + ": " + str(value_attributes[2]))
-    print("Anzahl verfügbarer Talentpunkte: " + str(compensation_points))
+class Hero:
+    def __init__(self):
+        self.name = ""
+        self.optolith_version = 0
+        self.attributes = {}
+        self.talents = {}
+        self.modification_temp = 0
+        self.modification_perm = 0
+        self.enabled = True
+        self.number_of_successes = 0
+        self.number_of_failures = 0
+        self.number_of_critical_successes = 0
+        self.number_of_critical_failures = 0
+        self.number_of_really_critical_failures = 0
+        self.number_of_really_critical_successes = 0
+        self.number_of_games = 0
 
-    global number_of_successes
-    global number_of_failures
-    global number_of_critical_successes
-    global number_of_critical_failures
-    global number_of_really_critical_failures
-    global number_of_really_critical_successes
+    def roll_dices(self, talent_input, modification):
+        talent = german_talents[talent_input]
+        relevant_attributes = talents[talent]
+        # print(modification)
+        compensation_points_max = self.talents[talent]
+        compensation_points = compensation_points_max
+        modification = int(modification) + int(self.modification_perm) + int(self.modification_temp)
+        self.modification_temp = 0  # reset temporary modification
+        # compensation_points = 0  # just for testing
+        # print(compensation_points)
+        value_attributes = []
+        value_attributes.append(self.attributes[relevant_attributes[0]] + int(modification))
+        value_attributes.append(self.attributes[relevant_attributes[1]] + int(modification))
+        value_attributes.append(self.attributes[relevant_attributes[2]] + int(modification))
+        return_dic = {"modification": modification, "attribute_names": relevant_attributes,
+                      "attribute_values": value_attributes,
+                      "compensation_points": compensation_points}
 
-    rolls = []
+        global number_of_successes
+        global number_of_failures
+        global number_of_critical_successes
+        global number_of_critical_failures
+        global number_of_really_critical_failures
+        global number_of_really_critical_successes
 
-    # global number_of_20
-    # bereits_20 = False
+        rolls = []
 
-    for roll in range(0, 3):
-        roll = randint(1, 20)  # Würfel mit 20 Seiten
-        rolls.append(roll)
+        for counter_dice in range(0, 3):
+            roll = randint(1, 20)  # Dice with 20 sites
+            rolls.append(roll)
 
-    print("Es wurden folgende Werte geworfen:")
-    print(rolls)
+        if rolls.count(1) == 3:
+            number_of_really_critical_successes += 1
+            self.number_of_really_critical_successes += 1
+            return_dic["name"] = self.name
+            return_dic["talent"] = talent_input
+            return_dic["type"] = "really_critical_success"
+            return_dic["quality_level"] = str(self.calc_quality(compensation_points_max * 2))
+            return_dic["talent_value"] = str(compensation_points_max)
+            return_dic["remaining_points"] = str(compensation_points)
+            return_dic["dice_values"] = rolls
+            return return_dic
 
-    if rolls.count(1) == 3:
-        print("BESONDERER KRITISCHER ERFOLG")
+        if rolls.count(1) == 2:
+            number_of_critical_successes += 1
+            self.number_of_critical_successes += 1
+            return_dic["name"] = self.name
+            return_dic["talent"] = talent_input
+            return_dic["type"] = "critical_success"
+            return_dic["quality_level"] = str(self.calc_quality(compensation_points_max * 2))
+            return_dic["talent_value"] = str(compensation_points_max)
+            return_dic["remaining_points"] = str(compensation_points)
+            return_dic["dice_values"] = rolls
+            return return_dic
+
+        if rolls.count(20) == 3:
+            number_of_really_critical_failures += 1
+            self.number_of_really_critical_failures += 1
+            return_dic["name"] = self.name
+            return_dic["talent"] = talent_input
+            return_dic["type"] = "really_critical_failure"
+            return_dic["quality_level"] = 0
+            return_dic["talent_value"] = str(compensation_points_max)
+            return_dic["remaining_points"] = str(compensation_points)
+            return_dic["dice_values"] = rolls
+            return return_dic
+
+        if rolls.count(20) == 2:
+            number_of_critical_failures += 1
+            self.number_of_critical_failures += 1
+            return_dic["name"] = self.name
+            return_dic["talent"] = talent_input
+            return_dic["type"] = "critical_failure"
+            return_dic["quality_level"] = 0
+            return_dic["talent_value"] = str(compensation_points_max)
+            return_dic["remaining_points"] = str(compensation_points)
+            return_dic["dice_values"] = rolls
+            return return_dic
+
+        for x, roll in enumerate(rolls):
+            if roll > value_attributes[x]:
+                if roll - value_attributes[x] <= compensation_points:
+                    compensation_points = compensation_points - (roll - value_attributes[x])
+                else:
+                    number_of_failures += 1
+                    self.number_of_failures += 1
+                    return_dic["name"] = self.name
+                    return_dic["talent"] = talent_input
+                    return_dic["type"] = "failure"
+                    return_dic["quality_level"] = 0
+                    return_dic["talent_value"] = str(compensation_points_max)
+                    return_dic["remaining_points"] = 0
+                    return_dic["dice_values"] = rolls
+                    return return_dic
+            #x += 1
+
+        number_of_successes += 1
+        self.number_of_successes += 1
+        return_dic["name"] = self.name
+        return_dic["talent"] = talent_input
+        return_dic["type"] = "success"
+        return_dic["quality_level"] = str(self.calc_quality(compensation_points))
+        return_dic["talent_value"] = str(compensation_points_max)
+        return_dic["remaining_points"] = str(compensation_points)
+        return_dic["dice_values"] = rolls
+        return return_dic
+
+    def calc_quality(self, compensation_points_input):
+
+        if 0 <= compensation_points_input <= 3:
+            return 1
+
+        if 4 <= compensation_points_input <= 6:
+            return 2
+
+        if 7 <= compensation_points_input <= 9:
+            return 3
+
+        if 10 <= compensation_points_input <= 12:
+            return 4
+
+        if 13 <= compensation_points_input <= 15:
+            return 5
+
+        else:
+            return 6
+
+
+def read_json_files():
+
+    all_files = os.listdir("./helden/")
+
+    heroes_json = []
+
+    for file in all_files:
+        if file.endswith(".json"):
+            input_file = open("./helden/" + file, "r", encoding="utf-8")
+            heroes_json.append(json.loads(input_file.read()))  # read line, convert it to dictionary and append it to list
+            input_file.close()
+
+    heroes_temp_attributes = []
+
+    for hero in heroes_json:
+        heroes_temp_attributes.append(hero["attr"]["values"])
+
+    heroes = []
+
+    for hero in heroes_temp_attributes:  # read Attributes from json file
+        h = Hero()
+        for stats in hero:
+            h.attributes[str(stats[0])] = stats[1]
+        heroes.append(h)
+
+    for i, hero in enumerate(heroes_json):  # read talents
+        for tal_count in range(1, 60):  # 59 talents
+            key_for_dic = "TAL_" + str(tal_count)
+            heroes[i].talents[key_for_dic] = hero["talents"].get(key_for_dic, 0)
+        heroes[i].name = hero['name']
+        heroes[i].optolith_version = hero["clientVersion"]
+        heroes[i].modification_perm = 0
+        heroes[i].modification_temp = 0
+        heroes[i].enabled = True
+    return heroes
+
+
+def read_talents():
+    with open("csv/talents.csv", "r", encoding="utf-8") as input_csv:
+        german_talents = {}
+        talents_german = {}
+        talents = {}
+        input_csv.readline()  # skip first line
+        csv_reader = csv.reader(input_csv)
+        for row in csv_reader:
+            row_list = str(row[0]).split(';')
+            #print(row_list)
+            german_talents[str(row_list[1])] = "TAL_" + str(row_list[0])
+            attr_list = row_list[2].split('&')
+            talents["TAL_" + str(row_list[0])] = ['ATTR_' + str(attr_list[0]), 'ATTR_' + str(attr_list[1]), 'ATTR_' + str(attr_list[2])]
+
+        talents_german = {value: key for (key, value) in german_talents.items()}
+        return talents, german_talents, talents_german
+
+
+def read_attributes():
+    with open("csv/attributes.csv", "r", encoding="utf-8") as input_csv:
+        german_attributes = {}
+        input_csv.readline()  # skip first line
+        csv_reader = csv.reader(input_csv)
+        for row in csv_reader:
+            row_list = str(row[0]).split(';')
+            #print(row_list)
+            german_attributes[str(row_list[1])] = "ATTR_" + str(row_list[0])
+
+    attributes_german = {value: key for (key, value) in german_attributes.items()}
+    return german_attributes, attributes_german
+
+
+def console_output_result(input_dictionary, flag):
+    if flag:
         print("*************************************")
-        number_of_really_critical_successes += 1
-        return
+        print("Name: " + str(input_dictionary["name"]))
+        print("Aktueller Modifikator auf diese Probe: " + str(input_dictionary["modification"]))
+        for m, attribute in enumerate(input_dictionary["attribute_names"]):
+            print("Wert inkl. Modifikatoren für " + str(attributes_german[attribute]) + ": " + str(input_dictionary["attribute_values"][m]))
 
-    if rolls.count(1) == 2:
-        print("KRITISCHER ERFOLG")
+        print("Anzahl verfügbarer Talentpunkte: " + str(input_dictionary["compensation_points"]))
+        print("Talent: " + str(input_dictionary["talent"]))
+        print(str(input_dictionary["type"]))
+        print("Talentpunkte: " + str(input_dictionary["talent_value"]))
+        print("Verbleibende Talentpunkte: " + str(input_dictionary["remaining_points"]))
+        print("Qualitätsstufe: " + str(input_dictionary["quality_level"]))
+        print("Würfelergebnis: " + str(input_dictionary["dice_values"]))
         print("*************************************")
-        number_of_critical_successes += 1
-        return
 
-    if rolls.count(20) == 3:
-        print("BESONDERER KRITISCHER MISSERFOLG")
-        print("*************************************")
-        number_of_really_critical_failures += 1
-        return
-
-    if rolls.count(20) == 2:
-        print("KRITISCHER MISSERFOLG")
-        print("*************************************")
-        number_of_critical_failures += 1
-        return
-
-    x = 0  # TODO: ZIP-FUNCTION
-    for roll in rolls:
-        if roll > value_attributes[x]:
-            if roll - value_attributes[x] <= compensation_points:
-                compensation_points = compensation_points - (roll - value_attributes[x])
-            else:
-                print("MISSERFOLG")
-                print("*************************************")
-                number_of_failures += 1
-                return
-        x += 1
-
-    print("ERFOLG")
-    number_of_successes += 1
-    print("*************************************")
-
-# number_of_20 = 0
 
 number_of_successes = 0
 number_of_failures = 0
@@ -98,31 +253,53 @@ number_of_critical_successes = 0
 number_of_critical_failures = 0
 number_of_really_critical_failures = 0
 number_of_really_critical_successes = 0
+number_of_games = 0
 
-held1 = {"name": "Jürgen", "mut": 10, "klugheit": 10, "intuition": 10, "charisma": 10, "fingerfertigkeit": 10, "gewandheit": 10, "konstitution": 10, "koerperkraft": 10, "klettern": 0, "koerperbeherrschung": 10}
+heroes = read_json_files()
+talents, german_talents, talents_german = read_talents()
+german_attributes, attributes_german = read_attributes()
 
-talents = {"klettern": ["mut", "gewandheit", "koerperkraft"], "koerperbeherrschung": ["gewandheit", "gewandheit", "konstitution"]}
 
-# input_attribut = input("Welche Fähigkeit? (z.B. klettern)")
-# input_modificator = input("Welcher Bonus/Malus (z.B. -2 oder +1) ")
+def main():
+    global heroes
 
-# for hero in heroes:
-    # roll_dices(input_attribut, input_modificator, hero)
-number_of_tests = 100000
-for i in range(0, number_of_tests):
-    roll_dices("klettern", 0, held1)
+    print("Programmversion: " + str(version_of_program))
+    for hero in heroes:
+        print("Der Held " + str(hero.name) + " wurde erstellt mit Optolith Version " + str(hero.optolith_version))
 
-print("Anzahl erfolge: " + str(number_of_successes))
-print("Anzahl misserfolge: " + str(number_of_failures))
-print("Anzahl kritischer erfolge: " + str(number_of_critical_successes))
-print("Anzahl kritischer misserfolge: " + str(number_of_critical_failures))
-print("Anzahl besonders kritischer misserfolge: " + str(number_of_really_critical_failures))
-print("Anzahl besonders kritischer erfolge: " + str(number_of_really_critical_successes))
-# print("Anzahl 20er: " + str(number_of_20))
-# print("Kritischer Misserfolg + Misserfolg: " + str(number_of_critical_failures + number_of_failures))
+    while True:
+        debug_mode = True
+        input_talent = input(
+            "Welche Fähigkeit? (z.B. Klettern) oder 'M' um heldenspezifischen Modifikator zu ändern, oder 'S' für die Statistiken")
 
-print("+++++++++++++++++++++++++")
-results = [number_of_really_critical_successes, number_of_critical_successes,
-           number_of_successes, number_of_failures,
-           number_of_critical_failures, number_of_really_critical_failures]
-visualize(number_of_tests, results)
+        if input_talent == "m" or input_talent == "M":
+            print("Eingelesene Helden: ")
+            for i, hero in enumerate(heroes):
+                print("[" + str(i) + "]" + hero["name"])
+            input_hero_choice = input("Welcher Held soll geändert werden? (z.B. 1) ")
+            input_hero_specific_mod = input("Auf welchen gesamten Modifikator? (z.B. 1 oder -2)")
+            heroes[int(input_hero_choice)].modification_perm = input_hero_specific_mod
+        elif input_talent not in german_talents:
+            print("Ungültige Eingabe erkannt.")
+        elif input_talent == "s" or input_talent == "S":
+            number_of_games = (number_of_successes + number_of_failures + number_of_really_critical_failures + number_of_really_critical_successes + number_of_critical_failures + number_of_critical_successes) / len(heroes)
+            print("Anzahl Erfolge: " + str(number_of_successes))
+            print("Anzahl Misserfolge: " + str(number_of_failures))
+            print("Anzahl kritischer Erfolge: " + str(number_of_critical_successes))
+            print("Anzahl kritischer Misserfolge: " + str(number_of_critical_failures))
+            print("Anzahl besonders kritischer Misserfolge: " + str(number_of_really_critical_failures))
+            print("Anzahl besonders kritischer Erfolge: " + str(number_of_really_critical_successes))
+            print("Anzahl gesamter Spiele: " + str(number_of_games))
+            print("+++++++++++++++++++++++++")
+        else:
+            input_modification = input("Welcher Bonus/Malus (z.B. -2 oder +1) ")
+            for hero in heroes:
+                output = hero.roll_dices(input_talent, input_modification)
+                console_output_result(output, debug_mode)  # print results
+
+
+if __name__ == '__main__':
+    main()
+
+
+
